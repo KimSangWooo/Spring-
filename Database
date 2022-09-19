@@ -149,3 +149,191 @@ public class UserRepositoryMySQL implements UserRepository {
 
 }
 ```
+
+```jsx
+package green.co.kr.model.car;
+
+import java.util.List;
+
+public interface CarRepository {
+
+	public List<Car> getAll();
+	
+	public Car getById(int id);
+	
+	public int add(Car car);
+	
+	public int update(Car car);
+	
+	public int delete(int id);
+}
+```
+
+```jsx
+package green.co.kr.model.car;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Component;
+
+import green.co.kr.model.User;
+
+@Component
+public class CarRepoMySQL implements CarRepository {
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
+	private CarRowMapper mapper = new CarRowMapper();
+
+	private class CarRowMapper implements RowMapper<Car> {
+		@Override
+		public Car mapRow(ResultSet rs, int rowNum) throws SQLException {
+			int id = rs.getInt("id");
+			String model = rs.getString("model");
+			int price = rs.getInt("price");
+
+			return new Car(id, model, price);
+		}
+	}
+
+	@Override
+	public List<Car> getAll() {
+		return jdbcTemplate.query("select * from cars", mapper);
+	};
+
+	@Override
+	public Car getById(int id) {
+		return jdbcTemplate.queryForObject("select * from cars where id = ? ", mapper, id);
+	}
+
+	@Override
+	public int add(Car car) {
+		return jdbcTemplate.update("insert into cars (model, price) values (?,?)", car.getModel(), car.getPrice());
+	}
+
+	@Override
+	public int update(Car car) {
+		return jdbcTemplate.update("update into cars set model=?, price=?, where id=?", car.getModel(), car.getPrice(),
+				car.getId());
+	}
+
+	@Override
+	public int delete(int id) {
+		return jdbcTemplate.update("delete  from cars where id = ? ", id);
+	}
+}
+```
+
+```jsx
+package green.co.kr;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
+import java.util.Random;
+
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import green.co.kr.model.car.Car;
+import green.co.kr.model.car.CarRepository;
+
+@RunWith(SpringRunner.class)
+@ContextConfiguration(classes = {green.co.kr.config.RootConfig.class})
+public class CarRepoTest {
+	
+	@Autowired
+	private CarRepository repo;
+	
+	@Test
+	public void initTest() {
+		assertNotNull(repo);
+	}
+	
+	@BeforeClass
+	public static void addTestData() {
+		//테스트 전에 됨
+	}
+	
+	@Test
+	public void create() {
+		Random r = new Random();
+		Car car = new Car();
+		car.setModel("프로산게" + r.nextInt());
+		car.setPrice(400000000);
+		
+		int result = repo.add(car);
+		assertEquals(1, result);
+	}
+}
+```
+
+```jsx
+package green.co.kr.model.car;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class CarService {
+
+	@Autowired
+	private CarRepository repo;
+	
+	@Transactional
+	public int[] bulkInsert(List<Car> list) {
+		int[] results = new int[list.size()];
+		for (int i = 0; i < list.size(); i++) {
+			repo.add(list.get(i));
+		}
+		
+		return results;
+	}
+}
+```
+
+```jsx
+package green.co.kr;
+
+import static org.junit.Assert.assertNull;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import green.co.kr.config.RootConfig;
+import green.co.kr.model.car.Car;
+import green.co.kr.model.car.CarService;
+
+@RunWith(SpringRunner.class)
+@ContextConfiguration(classes = RootConfig.class)
+public class CarServiceTest {
+	@Autowired
+	private CarService service;
+
+	@Test(expected = DataAccessException.class)
+	public void bulkInsert() {
+		List<Car> list = Arrays.asList(new Car(0, "AAA", 100), new Car(0, "BBB", 100), new Car(0, "AAA", 200));
+
+		int[] result = service.bulkInsert(list);
+	}
+}
+```
