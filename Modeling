@@ -1,0 +1,250 @@
+```jsx
+package green.co.kr.config;
+
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.servlet.support.AbstractAnnotationConfigDispatcherServletInitializer;
+
+public class WebInit extends AbstractAnnotationConfigDispatcherServletInitializer {
+
+	@Override
+	protected Class<?>[] getRootConfigClasses() {
+		// TODO Auto-generated method stub
+		return new Class[] { RootConfig.class };
+	}
+
+	@Override
+	protected Class<?>[] getServletConfigClasses() {
+		// TODO Auto-generated method stub
+		return new Class[] { WebConfig.class};
+	}
+
+	@Override
+	protected String[] getServletMappings() {
+		// TODO Auto-generated method stub
+		return new String[] {"/"};
+				
+	}
+	protected Filter[] getServletFilters() {
+		CharacterEncodingFilter encodingFilter = new CharacterEncodingFilter();
+		encodingFilter.setEncoding("UTF-8");
+		encodingFilter.setForceEncoding(true);
+		return new Filter[] { encodingFilter };
+	}
+	
+	
+}
+```
+
+추상클래스 오버라이드
+
+```jsx
+package green.co.kr.config;
+
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class RootConfig {
+
+}
+```
+
+껍데기
+
+```jsx
+package green.co.kr.config;
+
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.ViewResolverRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+@EnableWebMvc
+@ComponentScan("kr.co.green")
+public class WebConfig implements WebMvcConfigurer {
+
+	@Override
+	public void addResourceHandlers(ResourceHandlerRegistry registry) {
+		registry.addResourceHandler("/resources/**").addResourceLocations("/resources");
+	}
+
+	@Override
+	public void configureViewResolvers(ViewResolverRegistry registry) {
+		registry.jsp("WEB-INF/views/", ".jsp");
+		
+	}
+
+	
+	
+}
+```
+
+인터페이스 구현
+
+폼 태그, 모델어트리뷰트,  getMapping 메소드의 att이름과 동일하게
+
+package [green.co.kr](http://green.co.kr/);
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import green.co.kr.model.User;
+
+@Controller
+public class UserController {
+private final static Logger Logger = LoggerFactory.getLogger(UserController.class);
+
+```
+@ModelAttribute("user")
+public User user() {
+	return new User("깁온값", 1);
+}
+
+@GetMapping("/user")
+public String userForm(Model model) {
+	model.addAttribute("user", new User("김상우", 26));
+	return "userForm";
+}
+
+@PostMapping("/user")
+public String submit(User user) {
+
+	Logger.info("입력정보 :" + user.toString());
+
+	return "redirect:/";
+}
+
+```
+
+}
+
+```jsx
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ taglib uri="http://www.springframework.org/tags/form" prefix="f" %>    
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+	<f:form modelAttribute="user" method="post">
+		<f:input type="text" path="name" />
+		<f:input type="text" path="age" />
+		<input type="submit" />
+		
+	</f:form>
+
+</body>
+</html>
+```
+
+```jsx
+package green.co.kr;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import green.co.kr.model.User;
+import green.co.kr.model.UserValidator;
+
+@Controller
+public class UserController {
+	private final static Logger Logger = LoggerFactory.getLogger(UserController.class);
+
+	@Autowired
+	private UserValidator validator;
+	
+	@ModelAttribute("user")
+	public User user() {
+		return new User("깁온값", 1);
+	}
+
+	@GetMapping("/user")
+	public String userForm(@ModelAttribute("user") User user) {
+		return "userForm";
+	}
+
+	@PostMapping("/user")
+	public String submit(@ModelAttribute("user") User user, BindingResult errors) {
+		
+		validator.validate(user, errors);
+		Logger.info("입력정보 :" + user.toString());
+
+		return "redirect:/";
+	}
+}
+```
+
+에러 디폴트, 
+
+```jsx
+package green.co.kr.model;
+
+import org.springframework.stereotype.Component;
+import org.springframework.validation.Errors;
+import org.springframework.validation.ValidationUtils;
+import org.springframework.validation.Validator;
+
+@Component
+public class UserValidator implements Validator {
+
+	@Override
+	public boolean supports(Class<?> clazz) {
+		return User.class.equals(clazz);
+	}
+
+	@Override
+	public void validate(Object target, Errors errors) {
+		ValidationUtils.rejectIfEmptyOrWhitespace(errors, "name", "name.empty", "이름을 입력하세요");
+		
+		User user = (User) target; 
+		if (user.getName().length() > 5 ) {
+			errors.rejectValue("name", "name.toolong", "이름이 너무 깁니다");
+		}
+		
+		if (user.getAge() > 200) {
+			errors.rejectValue("age", "age.tooold", "노인을 위한 나라는 없다");
+		}
+	}
+
+	
+	
+}
+```
+
+validator 라이브러리 추가 후 해당 필드값 위에 어노테이션 기능을 사용할 수 있다
+
+```jsx
+<dependency>
+    <groupId>org.hibernate.validator</groupId>
+    <artifactId>hibernate-validator</artifactId>
+    <version>6.2.4.Final</version>
+</dependency>
+```
+
+```jsx
+@NotBlank(message = "이름을 입력하시오")
+	@Size(min = 1, max = 4, message = "이름은 1~4자 사이여야합니다.")
+	private String name;
+	@Positive(message = "양수를 입력하세요")
+	@Max(value = 100, message = "최대값을 초과함")
+	private int age;
+```
