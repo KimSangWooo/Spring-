@@ -1,0 +1,122 @@
+핵심 기능 : Dependancy Injection (객체의 의존성을 프레임워크가 관리함)
+
+이클립스 플러그인 : spring tool suite 3 → wiki → 4.16
+
+```jsx
+<artifactId>spring-context</artifactId> // 객체 관리 패키지 / IOC bean 으로 관리
+```
+
+디펜던시 추가 : Maven repository → spring → Context, Beans, Core 라이브러리 추가(최신버전)
+
+Spring bean configration 파일 생성 
+
+콘피그 xml파일에서 패키지와 클래스 이름을 att 값으로 설정 해 준다 
+
+```jsx
+<bean class="beans.Bean" id="first"></bean>
+```
+
+```jsx
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+import beans.Bean;
+
+public class IOCTest {
+
+	public static void main(String[] args) {
+		ApplicationContext con = new ClassPathXmlApplicationContext("myconfig.xml");
+		
+		Bean b = con.getBean(Bean.class);
+		
+		b.hello();
+
+	}
+
+}
+```
+
+객체 의존성 생성자(constructor-arg) 주입
+
+```jsx
+<bean class="beans.Logic" id="second">
+		<constructor-arg ref="first"></constructor-arg>
+	</bean>
+```
+
+Bean객체화 (Component)어노테이션
+
+```jsx
+@Component
+public class MyRepository implements MyDataRepo {
+
+	@Override
+	public Iterable<Integer> getMyNumbers() {
+		List<Integer> list = new ArrayList<Integer>();
+		list.add(1);
+		list.add(2);
+		list.add(3);
+		list.add(4);
+		list.add(5);
+		
+		return list;
+	}
+}
+```
+
+객체는 지역스코프에서 있다가 메소드가 없어지면 쓰레기가된다. 특정 영역동안 유지되고 있어야 하는 객체같은 경우 직접적인 관리가 필요한데, 빈 프로그램을 사용하면 객체 관리를 하는데 할애하는 시간을 줄여준다. 
+
+필요 어노테이션 
+
+```jsx
+@Component //빈
+public class MyService {
+	
+	@Autowired //의존성
+	@Qualifier("mylist") //이름(동일 이름을 가진 객체의 기능자격 부여)
+	private MyDataRepo repo;
+	
+	public Iterable<Integer> numberService() {
+		
+		return repo.getMyNumbers();
+	}
+}
+```
+
+@Configration : 설정 어노테이션
+
+bean메소드 반환 : 메소드 이름을 빈 이름으로 설정, 빈값을 리턴시킴
+
+Spring MVC
+
+```jsx
+package green.co.kr;
+
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+@Controller
+@RequestMapping("/mapping")
+public class MappingController {
+	
+	@GetMapping(value = "/??.two", produces = "text/plain; charset=utf-8")
+	public @ResponseBody String two() {
+		return "두글자 매핑";
+	}
+
+	@GetMapping("/*.do")
+	public @ResponseBody String doURI() {
+		return "do로 끝나는 매핑";
+	}
+
+	@GetMapping(value = "/ppp", params = "com")
+	public @ResponseBody String ppp(@RequestParam (defaultValue = "default")String com) {
+		return "ppp";
+	}
+}
+```
